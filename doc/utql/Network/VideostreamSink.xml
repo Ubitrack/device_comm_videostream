@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<UTQLPatternTemplates xmlns='http://ar.in.tum.de/ubitrack/utql'
+                      xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+                      xmlns:xi='http://www.w3.org/2001/XInclude'
+                      xmlns:h="http://www.w3.org/1999/xhtml"
+                      xsi:schemaLocation='http://ar.in.tum.de/ubitrack/utql ../../schema/utql_templates.xsd'>
+
+
+    <Pattern name="VideostreamNvencSink" displayName="Network Sink NVENC encoded (Image)">
+        <Description><h:p>This pattern transmits a Image via UDP to a NetworkSoureImage.</h:p></Description>
+
+        <Input>
+            <Node name="A" displayName="A"/>
+            <Node name="B" displayName="B"/>
+            <Edge name="Input" source="A" destination="B" displayName="Input">
+                <Description><h:p>The Image received via network</h:p></Description>
+                <Predicate>type=='Image'&amp;&amp;mode=='push'</Predicate>
+
+            </Edge>
+        </Input>
+
+        <DataflowConfiguration>
+            <UbitrackLib class="VideostreamNvencSink"/>
+            <Attribute name="networkDestination" displayName="Network Destination" default="127.0.0.1" xsi:type="StringAttributeDeclarationType">
+            </Attribute>
+            <Attribute name="networkPort" displayName="Network Port" default="21844" xsi:type="IntAttributeDeclarationType">
+                <Description><h:p>Port of receiver socket. Defaults to 0x5554 (21844)</h:p></Description>
+            </Attribute>
+
+            <Attribute name="nvVideoCodec" xsi:type="EnumAttributeReferenceType"/>
+            <Attribute name="nvVideoCompression" xsi:type="EnumAttributeReferenceType"/>
+            <Attribute name="nvVideoFormat" xsi:type="EnumAttributeReferenceType"/>
+
+            <Attribute name="frameRate" displayName="Frame Rate" default="30" xsi:type="IntAttributeDeclarationType">
+                <Description><h:p>Expected Framerate (FPS) of the stream.</h:p></Description>
+            </Attribute>
+
+            <Attribute name="bitRate" displayName="Bit Rate" default="10" xsi:type="IntAttributeDeclarationType">
+                <Description><h:p>Expected Bitrate in Mbps of the stream.</h:p></Description>
+            </Attribute>
+
+        </DataflowConfiguration>
+    </Pattern>
+
+    <!-- Attribute declarations -->
+
+    <GlobalNodeAttributeDeclarations>
+        <xi:include href="file:GlobalAttrSpec.xml" xpointer="element(/1/1/1)"/>
+    </GlobalNodeAttributeDeclarations>
+
+    <GlobalEdgeAttributeDeclarations>
+        <xi:include href="file:GlobalAttrSpec.xml" xpointer="element(/1/2/1)"/>
+        <xi:include href="file:GlobalAttrSpec.xml" xpointer="element(/1/2/2)"/>
+        <xi:include href="file:GlobalAttrSpec.xml" xpointer="element(/1/2/3)"/>
+        <xi:include href="file:GlobalAttrSpec.xml" xpointer="element(/1/2/4)"/>
+        <xi:include href="file:GlobalAttrSpec.xml" xpointer="element(/1/2/5)"/>
+        <xi:include href="file:GlobalAttrSpec.xml" xpointer="element(/1/2/6)"/>
+        <xi:include href="file:GlobalAttrSpec.xml" xpointer="element(/1/2/7)"/>
+        <xi:include href="file:GlobalAttrSpec.xml" xpointer="element(/1/2/8)"/>
+    </GlobalEdgeAttributeDeclarations>
+
+    <GlobalDataflowAttributeDeclarations>
+        <!-- Unfortunately, the xpointer used in Xinclude is currently restricted to the element scheme and absolute element indices in Xerces (and thus XMLBeans) -->
+        <xi:include href="file:GlobalAttrSpec.xml" xpointer="element(/1/3/1)"/>
+        <xi:include href="file:GlobalAttrSpec.xml" xpointer="element(/1/3/2)"/>
+
+        <Attribute name="nvVideoCodec" displayName="Video Codec" default="H264" xsi:type="EnumAttributeDeclarationType">
+            <Description><p xmlns="http://www.w3.org/1999/xhtml">Select the video codec.</p></Description>
+            <EnumValue name="H264" displayName="H264"/>
+            <EnumValue name="HEVC" displayName="HEVC"/>
+        </Attribute>
+
+        <Attribute name="nvVideoCompression" displayName="Video Compression" default="LOSSLESS" xsi:type="EnumAttributeDeclarationType">
+            <Description><p xmlns="http://www.w3.org/1999/xhtml">Select the video compression method.</p></Description>
+            <EnumValue name="LOSSLESS" displayName="LOSSLESS"/>
+            <EnumValue name="LOSSY" displayName="LOSSY"/>
+        </Attribute>
+
+        <Attribute name="nvVideoFormat" displayName="Video Format" default="BGRA32" xsi:type="EnumAttributeDeclarationType">
+            <Description><p xmlns="http://www.w3.org/1999/xhtml">Select the video (pixel) format.</p></Description>
+            <EnumValue name="BGRA32" displayName="BGRA32"/>
+            <EnumValue name="UINT8" displayName="UINT8"/>
+            <EnumValue name="UINT16" displayName="UINT16"/>
+            <EnumValue name="UINT32" displayName="UINT32"/>
+        </Attribute>
+
+    </GlobalDataflowAttributeDeclarations>
+
+</UTQLPatternTemplates>
