@@ -147,14 +147,14 @@ private:
     unsigned long long decode64(int i) const
     {
         unsigned long long n = 0;
-        n = (  (rep_[i+0] << 56) & 0xFF00000000000000U)
-            | ((rep_[i+1] << 48) & 0x00FF000000000000U)
-            | ((rep_[i+2] << 40) & 0x0000FF0000000000U)
-            | ((rep_[i+3] << 32) & 0x000000FF00000000U)
-            | ((rep_[i+4] << 24) & 0x00000000FF000000U)
-            | ((rep_[i+5] << 16) & 0x0000000000FF0000U)
-            | ((rep_[i+6] <<  8) & 0x000000000000FF00U)
-            | ( rep_[i+7]        & 0x00000000000000FFU);
+        n = (  ((unsigned long long)(rep_[i+0]) << 56) & 0xFF00000000000000U)
+            | (((unsigned long long)(rep_[i+1]) << 48) & 0x00FF000000000000U)
+            | (((unsigned long long)(rep_[i+2]) << 40) & 0x0000FF0000000000U)
+            | (((unsigned long long)(rep_[i+3]) << 32) & 0x000000FF00000000U)
+            | (((unsigned long long)(rep_[i+4]) << 24) & 0x00000000FF000000U)
+            | (((unsigned long long)(rep_[i+5]) << 16) & 0x0000000000FF0000U)
+            | (((unsigned long long)(rep_[i+6]) <<  8) & 0x000000000000FF00U)
+            | ( (unsigned long long)(rep_[i+7])        & 0x00000000000000FFU);
 
         return n;
     }
