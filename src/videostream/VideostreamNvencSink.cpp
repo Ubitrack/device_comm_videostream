@@ -31,6 +31,7 @@
 
 // std
 #include <string>
+#include <algorithm>
 
 // on windows, asio must be included before anything that possible includes windows.h
 // don't ask why.
@@ -49,7 +50,7 @@
 
 #include <NvPipe.h>
 
-#include "VideostreamNvencProtocol.h"
+#include "VideostreamNvencFrameHeader.h"
 
 namespace {
     class VideoCodecMap : public std::map<std::string, NvPipe_Codec > {
@@ -232,7 +233,7 @@ namespace Ubitrack { namespace Vision {
                     }
                 }
 
-                VideostreamNvencProtocol header;
+                VideostreamNvencFrameHeader header;
 
                 cv::Mat input_img = m->Mat();
                 Vision::Image::ImageFormatProperties img_props;
@@ -250,6 +251,7 @@ namespace Ubitrack { namespace Vision {
                         cv::cvtColor(input_img, img, cv::COLOR_RGBA2BGRA);
                         break;
                     case Vision::Image::LUMINANCE:
+                        // this could be sent as UINT8 with NVenc
                         cv::cvtColor(input_img, img, cv::COLOR_GRAY2BGRA);
                         break;
                     default:
@@ -257,40 +259,81 @@ namespace Ubitrack { namespace Vision {
                 }
 
                 size_t raw_frame_size = img.total() * img.elemSize();
-                size_t message_size_max = header.size() + raw_frame_size;
 
                 // if send buffer size differs, re-initialize it to message_size_max (with 0)
-                if (m_send_buffer.size() != message_size_max) {
+                if (m_send_buffer.size() != raw_frame_size) {
                     m_send_buffer.clear();
-                    m_send_buffer.resize(message_size_max, 0);
+                    m_send_buffer.resize(raw_frame_size, 0);
                 }
 
-                uint8_t* buffer_ptr = &m_send_buffer[header.size()];
-                uint64_t size = NvPipe_Encode(m_video_encoder.get(), img.data, img.cols * img.elemSize(),
-                                              buffer_ptr, raw_frame_size, m->width(), m->height(), false);
-                if (0 == size) {
+                uint64_t framesize = NvPipe_Encode(m_video_encoder.get(), img.data, img.cols * img.elemSize(),
+                                              m_send_buffer.data(), raw_frame_size, m->width(), m->height(), false);
+                if (0 == framesize) {
                     LOG4CPP_ERROR(logger, "Encode error: " << NvPipe_GetError(m_video_encoder.get()));
                     return;
                 }
 
                 // very simple transmission protocol:
-                // header<int>(width, height, codec, format)
-                // then encoded framedata from encoder
-
-                header.timestamp(m.time()); // image timestamp
-                header.width((unsigned short)m->width()); // image width
-                header.height((unsigned short)m->height()); // image height
-                header.codec(m_video_codec); // image codec H264/HEVC
-                header.format(m_video_format); // image format BGRA32/UINT4/UINT8/UINT16/UINT32
-                header.framesize(size); // size of resulting encoded frame
-                header.copy_to(m_send_buffer);
-
-                size_t actual_packet_size = header.size() + size;
-                // assert that this fits into m_send_buffer !!
+                // header<int>(seq_id, width, height, codec, format, framesize)
+                // then encoded framedata from encoder, however array must be split into packets, each with a header<int>(seq_id)
 
                 LOG4CPP_TRACE( logger, "Sending image data to \"" << m_dstAddress << ":" << m_dstPort << "\"." );
 
-                m_socket->send_to( boost::asio::buffer( m_send_buffer.data(), actual_packet_size ), *m_endpoint );
+                size_t bytes_left = framesize;
+                std::vector<uint8_t> buffer(UDP_PACKET_SIZE, 0);
+                unsigned short sequence_id = 0;
+                size_t current_write_index = 0;
+
+                while (bytes_left > 0) {
+                    // first add header to packet and then compute how much space is left for data
+                    size_t space_left = UDP_PACKET_SIZE;
+                    size_t header_size = 0;
+                    if (sequence_id == 0) {
+                        header.mark_valid();
+                        header.seq_id(0);
+                        header.timestamp(m.time()); // image timestamp
+                        header.width((unsigned short)m->width()); // image width
+                        header.height((unsigned short)m->height()); // image height
+                        header.codec(m_video_codec); // image codec H264/HEVC
+                        header.format(m_video_format); // image format BGRA32/UINT4/UINT8/UINT16/UINT32
+                        header.framesize(framesize); // size of resulting encoded frame
+
+                        header_size = header.size();
+
+                        if (!header.copy_to(buffer)) {
+                            // error writing to buffer
+                            return;
+                        }
+                        space_left -= header.size();
+                    } else {
+                        VideostreamNvencPacketHeader pheader;
+                        pheader.mark_valid();
+                        pheader.seq_id(sequence_id);
+
+                        header_size = header.size();
+
+                        if (!pheader.copy_to(buffer)) {
+                            // error writing to buffer
+                            return;
+                        }
+                        space_left -= pheader.size();
+                    }
+
+                    size_t data_size = 0;
+                    if (space_left <= bytes_left) {
+                        data_size = bytes_left;
+                    } else {
+                        data_size = space_left;
+                    }
+
+                    uint8_t* data_buffer_ptr = &buffer[header_size];
+                    memcpy(data_buffer_ptr, m_send_buffer.data(), data_size);
+
+                    m_socket->send_to( boost::asio::buffer( &buffer[0], header_size + data_size ), *m_endpoint );
+
+                    sequence_id++;
+                    bytes_left -= data_size;
+                }
             }
         };
 

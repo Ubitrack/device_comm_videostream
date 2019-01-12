@@ -49,7 +49,7 @@
 
 #include <NvPipe.h>
 
-#include "VideostreamNvencProtocol.h"
+#include "VideostreamNvencFrameHeader.h"
 
 #include <log4cpp/Category.hh>
 
@@ -97,9 +97,11 @@ namespace Ubitrack { namespace Vision {
             boost::asio::ip::udp::endpoint m_endpoint;
 
             // Recive data. Do not touch from outside of async network thread
-            enum { max_receive_length = 1024000, receive_buffer_size = 1024200 };
+            enum { max_receive_length = UDP_PACKET_SIZE, receive_buffer_size = UDP_PACKET_SIZE+32 }; // why is the buffer larger as the max udp packet ?
             char receive_data[receive_buffer_size];
 
+            // local receive buffer
+            std::vector<uint8_t> m_receive_buffer;
 
             boost::shared_ptr< boost::thread > m_pNetworkThread;
 
@@ -111,7 +113,10 @@ namespace Ubitrack { namespace Vision {
 
             NvPipe_Format m_video_format;
 
-            std::vector<uint8_t> m_receive_buffer;
+            VideostreamNvencFrameHeader m_last_frame_header;
+
+            size_t m_bytes_received;
+            unsigned short m_next_sequence_id;
 
         public:
 
@@ -120,6 +125,9 @@ namespace Ubitrack { namespace Vision {
                     : Dataflow::Component( name )
                     , m_outPort( "Output", *this )
                     , m_listenPort( 0x5554 ) // default port is 0x5554 (UT) 21844
+                    , m_last_frame_header()
+                    , m_bytes_received(0)
+                    , m_next_sequence_id(0)
             {
 
                 // check for configuration
@@ -198,6 +206,152 @@ namespace Ubitrack { namespace Vision {
 
         protected:
 
+            void resetReceiveState() {
+                m_next_sequence_id = 0;
+                m_bytes_received = 0;
+                m_last_frame_header.mark_invalid();
+            }
+
+            void handleReceivedCompleteFrame() {
+
+                if ((m_last_frame_header.is_valid()) && (m_last_frame_header.framesize() > 0)) {
+                    Measurement::Timestamp sendtime = m_last_frame_header.timestamp();
+
+                    // Currently only works with BGRA32
+                    if (m_last_frame_header.format() != NVPIPE_BGRA32) {
+                        LOG4CPP_ERROR(logger, "Decoder only supports BGRA32 for now.");
+                        resetReceiveState();
+                        return;
+                    }
+                    m_video_codec = (NvPipe_Codec)m_last_frame_header.codec();
+                    m_video_format = (NvPipe_Format)m_last_frame_header.format();
+
+                    // create decoder instance if needed
+                    if (!m_video_decoder) {
+                        m_video_decoder.reset(NvPipe_CreateDecoder(m_video_format, m_video_codec));
+                        if (!m_video_decoder) {
+                            LOG4CPP_ERROR(logger, "Failed to create decoder: " << NvPipe_GetError(NULL));
+                            resetReceiveState();
+                            return;
+                        }
+                    }
+
+                    Vision::Image::ImageFormatProperties props;
+
+                    size_t elementSize = 32;
+                    switch (m_last_frame_header.format()) {
+                        case NVPIPE_BGRA32:
+                            props.imageFormat = Vision::Image::BGRA;
+                            props.bitsPerPixel = 32;
+                            props.channels = 4;
+                            props.matType = CV_8UC4;
+                            props.depth = CV_8U;
+                            elementSize = 4;
+                            break;
+                            //                        case NVPIPE_UINT4:
+                            //                            elementSize = 4;
+                            //                            break;
+                        case NVPIPE_UINT8:
+                            props.imageFormat = Vision::Image::LUMINANCE;
+                            props.bitsPerPixel = 8;
+                            props.channels = 1;
+                            props.matType = CV_8UC1;
+                            props.depth = CV_8U;
+                            elementSize = 1;
+                            break;
+                        case NVPIPE_UINT16:
+                            props.imageFormat = Vision::Image::LUMINANCE;
+                            props.bitsPerPixel = 16;
+                            props.channels = 1;
+                            props.matType = CV_16UC1;
+                            props.depth = CV_16U;
+                            elementSize = 2;
+                            break;
+                        case NVPIPE_UINT32:
+                            props.imageFormat = Vision::Image::LUMINANCE;
+                            props.bitsPerPixel = 32;
+                            props.channels = 1;
+                            props.matType = CV_32SC1;
+                            props.depth = CV_32S;
+                            elementSize = 4;
+                            break;
+                        default:
+                            LOG4CPP_ERROR(logger, "Unknown format: " << m_last_frame_header.format());
+                    }
+
+                    if (!m_video_decoder) {
+                        // should log here
+                        LOG4CPP_ERROR(logger, "video-encoder missing.");
+                        resetReceiveState();
+                        return;
+                    }
+
+                    Image::Ptr currentImage(new Image(m_last_frame_header.width(), m_last_frame_header.height(), props));
+
+                    uint64_t r = NvPipe_Decode(m_video_decoder.get(), m_receive_buffer.data(), m_last_frame_header.framesize(),
+                                               currentImage->Mat().data, m_last_frame_header.width(), m_last_frame_header.height());
+                    if (0 == r) {
+                        LOG4CPP_ERROR(logger, "Decode error: " << NvPipe_GetError(m_video_decoder.get()));
+                        resetReceiveState();
+                        return;
+                    }
+
+
+                    m_outPort.send(Measurement::ImageMeasurement(sendtime, currentImage));
+
+                } else {
+                    // received invalid frame
+                    LOG4CPP_ERROR(logger, "received invalid frame.");
+                    resetReceiveState();
+                }
+            }
+
+            size_t HandleReceiveHeader(size_t length) {
+                size_t header_size = 0;
+                if (m_next_sequence_id == 0) {
+                    VideostreamNvencFrameHeader header;
+
+                    uint8_t *receive_data_ptr = (uint8_t *) (&receive_data[0]);
+                    std::vector<uint8_t> hdr_recbuf(receive_data_ptr, receive_data_ptr + header.size());
+                    header.copy_from(hdr_recbuf);
+                    if (!header.is_valid()) {
+                        LOG4CPP_ERROR(logger, "Error while receiving packet: header is invalid (frame).");
+                        return 0;
+                    }
+
+                    // we have received a valid new frame
+                    header_size = header.size();
+                    m_last_frame_header = header;
+                    m_next_sequence_id = (unsigned short)(header.seq_id() + 1);
+
+                    // if send buffer size differs, re-initialize it to message_size_max (with 0)
+                    if (m_receive_buffer.size() != header.framesize()) {
+                        m_receive_buffer.clear();
+                        m_receive_buffer.resize(header.framesize(), 0);
+                    }
+
+
+                } else if (m_last_frame_header.is_valid()) {
+                    VideostreamNvencPacketHeader header;
+
+                    auto *receive_data_ptr = (uint8_t *) (&receive_data[0]);
+                    std::vector<uint8_t> hdr_recbuf(receive_data_ptr, receive_data_ptr + header.size());
+                    header.copy_from(hdr_recbuf);
+                    if (!header.is_valid()) {
+                        LOG4CPP_ERROR(logger, "Error while receiving packet: header is invalid (packet).");
+                        return 0;
+                    }
+
+                    header_size = header.size();
+                    m_next_sequence_id = (unsigned short)(header.seq_id() + 1);
+
+                } else {
+                    // currently unhandled state ..
+                    LOG4CPP_ERROR(logger, "error receiving frame: sequence id != 0 and header invalid.");
+                    return 0;
+                }
+                return header_size;
+            }
 
             void HandleReceive( const boost::system::error_code err, size_t length ) {
                 Measurement::Timestamp recvtime = Measurement::now();
@@ -217,99 +371,34 @@ namespace Ubitrack { namespace Vision {
                     UBITRACK_THROW("FIXME: received more than max_receive_length bytes.");
                 }
 
-                try {
+                size_t header_size = HandleReceiveHeader(length);
+                // header_size 0 ==> error
+                if (header_size == 0) {
+                    // reset state machine
+                    LOG4CPP_ERROR(logger, "received invalid frame.");
+                    resetReceiveState();
+                } else {
+                    // copy received bytes
+                    size_t img_bytes_available = length - header_size;
 
-                    VideostreamNvencProtocol header;
+                    if (img_bytes_available + m_bytes_received <= m_receive_buffer.size()) {
+                        uint8_t *recbuf_ptr = (uint8_t *) (&receive_data[header_size]);
+                        uint8_t *imgbuf_ptr = &m_receive_buffer[m_bytes_received];
+                        memcpy(imgbuf_ptr, recbuf_ptr, img_bytes_available);
 
-                    std::vector<uint8_t> hdr_recbuf(receive_data, receive_data + header.size());
-                    header.copy_from(hdr_recbuf);
+                        // should be simplified ..
+                        m_bytes_received += img_bytes_available;
 
-                    Measurement::Timestamp sendtime = header.timestamp();
-
-                    if (header.framesize() > 0) {
-                        if (length != header.framesize() + header.size()) {
-                            LOG4CPP_ERROR(logger, "Unexpected length of package: " << length << " should be "
-                                                                                   << header.framesize() +
-                                                                                      header.size());
-                            return;
-                        }
-
-                        // Currently only works with BGRA32
-                        if (header.format() != NVPIPE_BGRA32) {
-                            LOG4CPP_ERROR(logger, "Decoder only supports BGRA32 for now.");
-                            return;
-                        }
-
-                        // create decoder instance if needed
-                        if (!m_video_decoder) {
-                            m_video_decoder.reset(NvPipe_CreateDecoder(m_video_format, m_video_codec));
-                            if (!m_video_decoder) {
-                                LOG4CPP_ERROR(logger, "Failed to create decoder: " << NvPipe_GetError(NULL));
-                                return;
-                            }
-                        }
-
-                        Vision::Image::ImageFormatProperties props;
-
-                        size_t elementSize = 32;
-                        switch (header.format()) {
-                            case NVPIPE_BGRA32:
-                                props.imageFormat = Vision::Image::BGRA;
-                                props.bitsPerPixel = 32;
-                                props.channels = 4;
-                                props.matType = CV_8UC4;
-                                props.depth = CV_8U;
-                                elementSize = 4;
-                                break;
-//                        case NVPIPE_UINT4:
-//                            elementSize = 4;
-//                            break;
-                            case NVPIPE_UINT8:
-                                props.imageFormat = Vision::Image::LUMINANCE;
-                                props.bitsPerPixel = 8;
-                                props.channels = 1;
-                                props.matType = CV_8UC1;
-                                props.depth = CV_8U;
-                                elementSize = 1;
-                                break;
-                            case NVPIPE_UINT16:
-                                props.imageFormat = Vision::Image::LUMINANCE;
-                                props.bitsPerPixel = 16;
-                                props.channels = 1;
-                                props.matType = CV_16UC1;
-                                props.depth = CV_16U;
-                                elementSize = 2;
-                                break;
-                            case NVPIPE_UINT32:
-                                props.imageFormat = Vision::Image::LUMINANCE;
-                                props.bitsPerPixel = 32;
-                                props.channels = 1;
-                                props.matType = CV_32SC1;
-                                props.depth = CV_32S;
-                                elementSize = 4;
-                                break;
-                            default: LOG4CPP_ERROR(logger, "Unknown format: " << header.format());
-
-                        }
-
-                        Image::Ptr currentImage(new Image(header.width(), header.height(), props));
-
-
-                        std::vector<uint8_t> img_recbuf(&receive_data[header.size()], header.framesize());
-
-                        uint64_t r = NvPipe_Decode(m_video_decoder.get(), img_recbuf.data(), header.framesize(),
-                                                   currentImage->Mat().data, header.width(), header.height());
-                        if (0 == r) {
-                            LOG4CPP_ERROR(logger, "Decode error: " << NvPipe_GetError(m_video_decoder.get()));
-                            return;
-                        }
-
-
-                        m_outPort.send(Measurement::ImageMeasurement(sendtime, currentImage));
+                    } else {
+                        // received too much data ..
+                        LOG4CPP_ERROR(logger, "received too much data.");
+                        resetReceiveState();
                     }
-                }
-                catch (const std::exception &e) {
-                    LOG4CPP_ERROR(logger, "Caught exception " << e.what());
+
+                    if (m_last_frame_header.is_valid() && (m_bytes_received == m_last_frame_header.framesize())) {
+                        handleReceivedCompleteFrame();
+                    }
+
                 }
 
                 // restart receiving new packet
@@ -318,11 +407,11 @@ namespace Ubitrack { namespace Vision {
                         m_endpoint,
                         boost::bind(&VideostreamNvencSourceComponent::HandleReceive, this, boost::asio::placeholders::error,
                                     boost::asio::placeholders::bytes_transferred)
-                );
+            );
 
-            }
+        }
 
-        };
+    };
 
 // register module at factory
         UBITRACK_REGISTER_COMPONENT( Dataflow::ComponentFactory* const cf ) {
