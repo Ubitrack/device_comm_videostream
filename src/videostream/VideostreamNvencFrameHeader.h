@@ -82,7 +82,7 @@ public:
     void height(unsigned short n) { encode16(14, n); }
     void codec(unsigned short n) { encode16(16, n); }
     void format(unsigned short n) { encode16(118, n); }
-    void framesize(unsigned short n) { encode32(20, n); }
+    void framesize(unsigned int n) { encode32(20, n); }
 
     void to_string()
     {
@@ -105,10 +105,7 @@ public:
         if (buffer.size() < size()) {
             return false;
         }
-        unsigned int i;
-        for (i = 0; i < sizeof(rep_); i++) {
-            buffer.at(i) = rep_[i];
-        }
+        std::copy(&rep_[0], &rep_[0] + sizeof(rep_), buffer.begin());
         return true;
     }
 
@@ -116,10 +113,7 @@ public:
         if (buffer.size() < size()) {
             return false;
         }
-        unsigned int i;
-        for (i = 0; i < sizeof(rep_); i++) {
-            rep_[i] = buffer.at(i);
-        }
+        std::copy(buffer.begin(), buffer.begin() + sizeof(rep_), &rep_[0] );
         return true;
     }
 
@@ -160,11 +154,11 @@ private:
     }
 
     void encode16(int i, unsigned short num) {
-        for(int j = 0; j < 2; j++) rep_[i+j] = num >> (8-1-j)*8;
+        for(int j = 0; j < 2; j++) rep_[i+j] = num >> (2-1-j)*8;
     }
 
     void encode32(int i, unsigned int num) {
-        for(int j = 0; j < 4; j++) rep_[i+j] = num >> (8-1-j)*8;
+        for(int j = 0; j < 4; j++) rep_[i+j] = num >> (4-1-j)*8;
     }
 
     void encode64(int i, unsigned long long num) {
@@ -184,7 +178,7 @@ public:
     VideostreamNvencPacketHeader() { std::fill(rep_, rep_ + sizeof(rep_), 0); }
 
     bool is_valid() const { return decode16(0) == PACKET_HEADER_ID;}
-    unsigned short seq_id() const { return decode16(1); }
+    unsigned short seq_id() const { return decode16(2); }
 
     void mark_valid() { encode16(0, PACKET_HEADER_ID);}
     void mark_invalid() { encode16(0, 0);}
@@ -211,10 +205,7 @@ public:
         if (buffer.size() < size()) {
             return false;
         }
-        unsigned int i;
-        for (i = 0; i < sizeof(rep_); i++) {
-            buffer.at(i) = rep_[i];
-        }
+        std::copy(&rep_[0], &rep_[0] + sizeof(rep_), buffer.begin());
         return true;
     }
 
@@ -222,10 +213,7 @@ public:
         if (buffer.size() < size()) {
             return false;
         }
-        unsigned int i;
-        for (i = 0; i < sizeof(rep_); i++) {
-            rep_[i] = buffer.at(i);
-        }
+        std::copy(buffer.begin(), buffer.begin() + sizeof(rep_), &rep_[0] );
         return true;
     }
 
@@ -240,7 +228,7 @@ private:
     }
 
     void encode16(int i, unsigned short num) {
-        for(int j = 0; j < 2; j++) rep_[i+j] = num >> (8-1-j)*8;
+        for(int j = 0; j < 2; j++) rep_[i+j] = num >> (2-1-j)*8;
     }
 
     unsigned char rep_[4];

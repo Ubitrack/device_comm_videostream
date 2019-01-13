@@ -13,7 +13,6 @@ class UbitrackCommVideostreamConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     options = {
         "with_nvenc": [True, False],
-        "with_msgpack": [True, False],
     }
     generators = "cmake"
 
@@ -28,15 +27,12 @@ class UbitrackCommVideostreamConan(ConanFile):
         "ubitrack_vision:shared=True",
         "ubitrack_dataflow:shared=True",
         "with_nvenc=True",
-        "with_msgpack=True",
         )
 
     # all sources are deployed with the package
     exports_sources = "doc/*", "src/*", "CMakeLists.txt"
 
     def requirements(self):
-        if self.options.with_msgpack:
-            self.requires("msgpack/[>=2.1.5]@camposs/stable")
         if self.options.with_nvenc:
             self.requires("nvpipe/[>=0.1]@camposs/testing")
 
@@ -47,7 +43,6 @@ class UbitrackCommVideostreamConan(ConanFile):
        
     def build(self):
         cmake = CMake(self)
-        cmake.definitions["WITH_MSGPACK"] = self.options.with_msgpack
         cmake.definitions["WITH_NVENC"] = self.options.with_nvenc
         cmake.configure()
         cmake.build()

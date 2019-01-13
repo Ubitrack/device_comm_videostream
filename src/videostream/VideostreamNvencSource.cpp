@@ -315,9 +315,12 @@ namespace Ubitrack { namespace Vision {
                     std::vector<uint8_t> hdr_recbuf(receive_data_ptr, receive_data_ptr + header.size());
                     header.copy_from(hdr_recbuf);
                     if (!header.is_valid()) {
-                        LOG4CPP_ERROR(logger, "Error while receiving packet: header is invalid (frame).");
+                        LOG4CPP_DEBUG(logger, "Error while receiving packet: header is invalid (frame).");
                         return 0;
                     }
+
+                    LOG4CPP_TRACE(logger, "Received new frame header - seq_id: " << header.seq_id() << " width: " << header.width() <<
+                                          " height: " << header.height() << " framesize: " << header.framesize() << " timestamp: " << header.timestamp());
 
                     // we have received a valid new frame
                     header_size = header.size();
@@ -338,7 +341,7 @@ namespace Ubitrack { namespace Vision {
                     std::vector<uint8_t> hdr_recbuf(receive_data_ptr, receive_data_ptr + header.size());
                     header.copy_from(hdr_recbuf);
                     if (!header.is_valid()) {
-                        LOG4CPP_ERROR(logger, "Error while receiving packet: header is invalid (packet).");
+                        LOG4CPP_DEBUG(logger, "Error while receiving packet: header is invalid (packet).");
                         return 0;
                     }
 
@@ -366,8 +369,8 @@ namespace Ubitrack { namespace Vision {
                     UBITRACK_THROW(msg.str());
                 }
 
-                if (length >= max_receive_length) {
-                    LOG4CPP_ERROR(logger, "Too many bytes received");
+                if (length > max_receive_length) {
+                    LOG4CPP_ERROR(logger, "Too many bytes received (max: " << max_receive_length << " actual: " << length);
                     UBITRACK_THROW("FIXME: received more than max_receive_length bytes.");
                 }
 
@@ -375,23 +378,26 @@ namespace Ubitrack { namespace Vision {
                 // header_size 0 ==> error
                 if (header_size == 0) {
                     // reset state machine
-                    LOG4CPP_ERROR(logger, "received invalid frame.");
+                    LOG4CPP_DEBUG(logger, "received invalid frame (header_size == 0).");
                     resetReceiveState();
                 } else {
                     // copy received bytes
                     size_t img_bytes_available = length - header_size;
+                    LOG4CPP_TRACE( logger, "Received packet id: \"" << (m_next_sequence_id -1) << " - size: " << (img_bytes_available) << "\"." );
 
                     if (img_bytes_available + m_bytes_received <= m_receive_buffer.size()) {
-                        uint8_t *recbuf_ptr = (uint8_t *) (&receive_data[header_size]);
-                        uint8_t *imgbuf_ptr = &m_receive_buffer[m_bytes_received];
-                        memcpy(imgbuf_ptr, recbuf_ptr, img_bytes_available);
 
-                        // should be simplified ..
+                        std::copy(
+                                &receive_data[0] + header_size,
+                                &receive_data[0] + (header_size + img_bytes_available),
+                                m_receive_buffer.data() + m_bytes_received);
+
+
                         m_bytes_received += img_bytes_available;
 
                     } else {
                         // received too much data ..
-                        LOG4CPP_ERROR(logger, "received too much data.");
+                        LOG4CPP_ERROR(logger, "received too much data - available: " << img_bytes_available << " received: " << m_bytes_received << " buffer size: " << m_receive_buffer.size());
                         resetReceiveState();
                     }
 

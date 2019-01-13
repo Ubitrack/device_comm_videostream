@@ -153,6 +153,11 @@ namespace Ubitrack { namespace Vision {
             // nvenc expected bitrate
             unsigned int m_bitrate;
 
+            // all frames are sent as iframes ?
+            // default=True should be configurable
+            // if true, all frames are iframes (less compression, but stateless)
+            bool m_always_send_iframe;
+
             // local send buffer
             std::vector<uint8_t> m_send_buffer;
 
@@ -170,6 +175,7 @@ namespace Ubitrack { namespace Vision {
                     , m_video_format(NVPIPE_BGRA32)
                     , m_framerate(30)
                     , m_bitrate(20)
+                    , m_always_send_iframe(true)
             {
                 using boost::asio::ip::udp;
 
@@ -221,15 +227,20 @@ namespace Ubitrack { namespace Vision {
 
         protected:
 
-            void eventIn( const Measurement::ImageMeasurement& m )
-            {
+            uint64_t encode_image(const Measurement::ImageMeasurement& m) {
 
                 if (!m_video_encoder) {
+                    unsigned int bitrate = m_bitrate * 1000 * 1000;
+
+                    LOG4CPP_INFO(logger, "Creating encoder - format " << m_video_format << " codec: " << m_video_codec
+                    << " compression: " << m_video_compression << " bitrate: " << bitrate << " framerate: " << m_framerate);
+
                     m_video_encoder.reset(NvPipe_CreateEncoder(m_video_format, m_video_codec, m_video_compression,
-                                                               m_bitrate * 1000 * 1000, m_framerate));
+                                                               bitrate, m_framerate));
+
                     if (!m_video_encoder) {
                         LOG4CPP_ERROR(logger, "Failed to create encoder: " << NvPipe_GetError(NULL));
-                        return;
+                        return 0;
                     }
                 }
 
@@ -267,9 +278,58 @@ namespace Ubitrack { namespace Vision {
                 }
 
                 uint64_t framesize = NvPipe_Encode(m_video_encoder.get(), img.data, img.cols * img.elemSize(),
-                                              m_send_buffer.data(), raw_frame_size, m->width(), m->height(), false);
-                if (0 == framesize) {
+                                                   m_send_buffer.data(), raw_frame_size, m->width(), m->height(), m_always_send_iframe);
+                if (framesize == 0) {
                     LOG4CPP_ERROR(logger, "Encode error: " << NvPipe_GetError(m_video_encoder.get()));
+                    return 0;
+                }
+                return framesize;
+            }
+
+            size_t write_header(std::vector<uint8_t>& buffer, unsigned short sequence_id,
+                    Ubitrack::Measurement::Timestamp ts, unsigned short width, unsigned short height, unsigned int framesize) {
+                size_t header_size = 0;
+                if (sequence_id == 0) {
+                    VideostreamNvencFrameHeader header;
+                    header.mark_valid();
+                    header.seq_id(sequence_id);
+                    header.timestamp(ts); // image timestamp
+                    header.width(width); // image width
+                    header.height(height); // image height
+                    header.codec(m_video_codec); // image codec H264/HEVC
+                    header.format(m_video_format); // image format BGRA32/UINT4/UINT8/UINT16/UINT32
+                    header.framesize(framesize); // size of resulting encoded frame
+
+                    header_size = header.size();
+
+                    if (!header.copy_to(buffer)) {
+                        // error writing to buffer
+                        LOG4CPP_ERROR(logger, "Error while writing header.");
+                        return 0;
+                    }
+                } else {
+                    VideostreamNvencPacketHeader header;
+                    header.mark_valid();
+                    header.seq_id(sequence_id);
+
+                    header_size = header.size();
+
+                    if (!header.copy_to(buffer)) {
+                        LOG4CPP_ERROR(logger, "Error while writing header.");
+                        // error writing to buffer
+                        return 0;
+                    }
+                }
+                return header_size;
+            }
+
+            void eventIn( const Measurement::ImageMeasurement& m )
+            {
+
+                LOG4CPP_TRACE( logger, "Encode image using NVEnc." );
+                size_t framesize = encode_image(m);
+                if (framesize == 0) {
+                    // problem encoding frame - should be logged already
                     return;
                 }
 
@@ -277,7 +337,7 @@ namespace Ubitrack { namespace Vision {
                 // header<int>(seq_id, width, height, codec, format, framesize)
                 // then encoded framedata from encoder, however array must be split into packets, each with a header<int>(seq_id)
 
-                LOG4CPP_TRACE( logger, "Sending image data to \"" << m_dstAddress << ":" << m_dstPort << "\"." );
+                LOG4CPP_TRACE( logger, "Sending image data to \"" << m_dstAddress << ":" << m_dstPort << "\" framesize:" << framesize << " timestamp: " << m.time() );
 
                 size_t bytes_left = framesize;
                 std::vector<uint8_t> buffer(UDP_PACKET_SIZE, 0);
@@ -287,52 +347,40 @@ namespace Ubitrack { namespace Vision {
                 while (bytes_left > 0) {
                     // first add header to packet and then compute how much space is left for data
                     size_t space_left = UDP_PACKET_SIZE;
-                    size_t header_size = 0;
-                    if (sequence_id == 0) {
-                        header.mark_valid();
-                        header.seq_id(0);
-                        header.timestamp(m.time()); // image timestamp
-                        header.width((unsigned short)m->width()); // image width
-                        header.height((unsigned short)m->height()); // image height
-                        header.codec(m_video_codec); // image codec H264/HEVC
-                        header.format(m_video_format); // image format BGRA32/UINT4/UINT8/UINT16/UINT32
-                        header.framesize(framesize); // size of resulting encoded frame
 
-                        header_size = header.size();
+                    size_t header_size = write_header(buffer, sequence_id, m.time(),
+                            (unsigned short)m->width(), (unsigned short)m->height(), (unsigned int)framesize);
 
-                        if (!header.copy_to(buffer)) {
-                            // error writing to buffer
-                            return;
-                        }
-                        space_left -= header.size();
-                    } else {
-                        VideostreamNvencPacketHeader pheader;
-                        pheader.mark_valid();
-                        pheader.seq_id(sequence_id);
-
-                        header_size = header.size();
-
-                        if (!pheader.copy_to(buffer)) {
-                            // error writing to buffer
-                            return;
-                        }
-                        space_left -= pheader.size();
+                    if (header_size == 0) {
+                        // did not write header - should be logged
+                        return;
                     }
 
+                    space_left -= header_size;
+
                     size_t data_size = 0;
-                    if (space_left <= bytes_left) {
+                    if (bytes_left < space_left ) {
                         data_size = bytes_left;
                     } else {
                         data_size = space_left;
                     }
 
-                    uint8_t* data_buffer_ptr = &buffer[header_size];
-                    memcpy(data_buffer_ptr, m_send_buffer.data(), data_size);
+                    std::copy(
+                            m_send_buffer.begin() + current_write_index,
+                            m_send_buffer.begin() + (current_write_index + data_size),
+                            buffer.begin() + header_size);
 
-                    m_socket->send_to( boost::asio::buffer( &buffer[0], header_size + data_size ), *m_endpoint );
+                    try{
+                        LOG4CPP_TRACE( logger, "Sending packet id: \"" << sequence_id << " - size: " << (header_size + data_size) << "\"." );
+                        m_socket->send_to( boost::asio::buffer( buffer.data(), header_size + data_size ), *m_endpoint );
+                    } catch (std::exception &e) {
+                        LOG4CPP_ERROR(logger, "Error while sending image: " << e.what());
+                        return;
+                    }
 
                     sequence_id++;
                     bytes_left -= data_size;
+                    current_write_index += data_size;
                 }
             }
         };
