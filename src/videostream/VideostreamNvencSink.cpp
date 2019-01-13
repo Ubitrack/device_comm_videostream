@@ -136,7 +136,7 @@ namespace Ubitrack { namespace Vision {
             std::string m_dstPort;
 
             /// nvenc video encoder (NvPipe)
-            boost::shared_ptr<NvPipe> m_video_encoder;
+            NvPipe* m_video_encoder;
 
             // nvenc video codec
             NvPipe_Codec m_video_codec;
@@ -168,6 +168,7 @@ namespace Ubitrack { namespace Vision {
                     : Dataflow::Component( name )
                     , m_inPort( "Input", *this, boost::bind( &VideostreamNvencSinkComponent::eventIn, this, _1 ) )
                     , m_ioService()
+					, m_video_encoder(nullptr)
                     , m_dstAddress( "127.0.0.1" )
                     , m_dstPort( "21844" ) // or 0x5554 as hex
                     , m_video_codec(NVPIPE_H264)
@@ -229,16 +230,17 @@ namespace Ubitrack { namespace Vision {
 
             uint64_t encode_image(const Measurement::ImageMeasurement& m) {
 
-                if (!m_video_encoder) {
+                if (m_video_encoder == nullptr) {
                     unsigned int bitrate = m_bitrate * 1000 * 1000;
 
                     LOG4CPP_INFO(logger, "Creating encoder - format " << m_video_format << " codec: " << m_video_codec
                     << " compression: " << m_video_compression << " bitrate: " << bitrate << " framerate: " << m_framerate);
 
-                    m_video_encoder.reset(NvPipe_CreateEncoder(m_video_format, m_video_codec, m_video_compression,
-                                                               bitrate, m_framerate));
+					// @todo: never get's deallocated .. need destructor to handle this.
+                    m_video_encoder = NvPipe_CreateEncoder(m_video_format, m_video_codec, m_video_compression,
+                                                           bitrate, m_framerate);
 
-                    if (!m_video_encoder) {
+                    if (m_video_encoder == nullptr) {
                         LOG4CPP_ERROR(logger, "Failed to create encoder: " << NvPipe_GetError(NULL));
                         return 0;
                     }
@@ -277,10 +279,10 @@ namespace Ubitrack { namespace Vision {
                     m_send_buffer.resize(raw_frame_size, 0);
                 }
 
-                uint64_t framesize = NvPipe_Encode(m_video_encoder.get(), img.data, img.cols * img.elemSize(),
+                uint64_t framesize = NvPipe_Encode(m_video_encoder, img.data, img.cols * img.elemSize(),
                                                    m_send_buffer.data(), raw_frame_size, m->width(), m->height(), m_always_send_iframe);
                 if (framesize == 0) {
-                    LOG4CPP_ERROR(logger, "Encode error: " << NvPipe_GetError(m_video_encoder.get()));
+                    LOG4CPP_ERROR(logger, "Encode error: " << NvPipe_GetError(m_video_encoder));
                     return 0;
                 }
                 return framesize;

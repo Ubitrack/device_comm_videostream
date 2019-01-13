@@ -45,7 +45,6 @@
 #include <utDataflow/ComponentFactory.h>
 
 #include <utVision/Image.h>
-#include <opencv/highgui.h>
 
 #include <NvPipe.h>
 
@@ -105,7 +104,7 @@ namespace Ubitrack { namespace Vision {
 
             boost::shared_ptr< boost::thread > m_pNetworkThread;
 
-            boost::shared_ptr<NvPipe> m_video_decoder;
+            NvPipe* m_video_decoder;
 
             NvPipe_Codec m_video_codec;
 
@@ -125,6 +124,7 @@ namespace Ubitrack { namespace Vision {
                     : Dataflow::Component( name )
                     , m_outPort( "Output", *this )
                     , m_listenPort( 0x5554 ) // default port is 0x5554 (UT) 21844
+					, m_video_decoder(nullptr)
                     , m_last_frame_header()
                     , m_bytes_received(0)
                     , m_next_sequence_id(0)
@@ -227,9 +227,11 @@ namespace Ubitrack { namespace Vision {
                     m_video_format = (NvPipe_Format)m_last_frame_header.format();
 
                     // create decoder instance if needed
-                    if (!m_video_decoder) {
-                        m_video_decoder.reset(NvPipe_CreateDecoder(m_video_format, m_video_codec));
-                        if (!m_video_decoder) {
+                    if (m_video_decoder == nullptr) {
+
+						// @todo: never get's deallocated .. need destructor to handle this.
+						m_video_decoder = NvPipe_CreateDecoder(m_video_format, m_video_codec);
+                        if (m_video_decoder == nullptr) {
                             LOG4CPP_ERROR(logger, "Failed to create decoder: " << NvPipe_GetError(NULL));
                             resetReceiveState();
                             return;
@@ -279,7 +281,7 @@ namespace Ubitrack { namespace Vision {
                             LOG4CPP_ERROR(logger, "Unknown format: " << m_last_frame_header.format());
                     }
 
-                    if (!m_video_decoder) {
+                    if (m_video_decoder == nullptr) {
                         // should log here
                         LOG4CPP_ERROR(logger, "video-encoder missing.");
                         resetReceiveState();
@@ -288,10 +290,10 @@ namespace Ubitrack { namespace Vision {
 
                     Image::Ptr currentImage(new Image(m_last_frame_header.width(), m_last_frame_header.height(), props));
 
-                    uint64_t r = NvPipe_Decode(m_video_decoder.get(), m_receive_buffer.data(), m_last_frame_header.framesize(),
+                    uint64_t r = NvPipe_Decode(m_video_decoder, m_receive_buffer.data(), m_last_frame_header.framesize(),
                                                currentImage->Mat().data, m_last_frame_header.width(), m_last_frame_header.height());
                     if (0 == r) {
-                        LOG4CPP_ERROR(logger, "Decode error: " << NvPipe_GetError(m_video_decoder.get()));
+                        LOG4CPP_ERROR(logger, "Decode error: " << NvPipe_GetError(m_video_decoder));
                         resetReceiveState();
                         return;
                     }
