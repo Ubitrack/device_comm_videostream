@@ -3,3 +3,17 @@
 ################################################################################
 
 /build
+
+examples/bin/
+
+examples/build/
+
+examples/graph_info\.json
+
+examples/conaninfo\.txt
+
+examples/conanbuildinfo\.txt
+
+examples/conanbuildinfo\.cmake
+
+examples/conan_imports_manifest\.txt
