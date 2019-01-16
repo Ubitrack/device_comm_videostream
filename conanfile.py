@@ -13,6 +13,8 @@ class UbitrackCommVideostreamConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     options = {
         "with_nvenc": [True, False],
+        "with_ndi": [True, False],
+        "ndisdk_root": "ANY",
     }
     generators = "cmake"
 
@@ -27,10 +29,12 @@ class UbitrackCommVideostreamConan(ConanFile):
         "ubitrack_vision:shared=True",
         "ubitrack_dataflow:shared=True",
         "with_nvenc=True",
+        "with_ndi=True",
+        "ndisdk_root=~/mydeps/vendor/newtek_ndisdk",
         )
 
     # all sources are deployed with the package
-    exports_sources = "doc/*", "src/*", "CMakeLists.txt"
+    exports_sources = "cmake/*", "doc/*", "src/*", "CMakeLists.txt"
 
     def requirements(self):
         if self.options.with_nvenc:
@@ -43,7 +47,11 @@ class UbitrackCommVideostreamConan(ConanFile):
        
     def build(self):
         cmake = CMake(self)
-        cmake.definitions["WITH_NVENC"] = self.options.with_nvenc
+        if self.options.with_nvenc:
+            cmake.definitions["WITH_NVENC"] = "ON"
+        if self.options.with_ndi:
+            cmake.definitions["WITH_NDI"] = "ON"
+        cmake.definitions["NDI_ROOT_DIR"] = str(self.options.ndisdk_root)
         cmake.configure()
         cmake.build()
         cmake.install()

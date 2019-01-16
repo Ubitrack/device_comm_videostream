@@ -13,8 +13,21 @@ foreach(fpath ${UBITRACK_SRCS})
       CONAN_PKG::ubitrack_core
       CONAN_PKG::ubitrack_vision
       CONAN_PKG::ubitrack_dataflow
+      )
+  if (WITH_NVENC)
+    target_link_libraries(${UBITRACK_LIBRARY_NAME}
       CONAN_PKG::nvpipe
       )
+  endif(WITH_NVENC)
+
+  if (WITH_NDI)
+    target_link_libraries(${UBITRACK_LIBRARY_NAME}
+            ${NDI_LIBRARIES}
+            )
+    target_include_directories(${UBITRACK_LIBRARY_NAME}
+            PRIVATE ${NDI_INCLUDE_DIR}
+            )
+  endif(WITH_NDI)
 
   # do not create symlinks to versioned names of component libraries
   set_target_properties(${UBITRACK_LIBRARY_NAME} PROPERTIES NO_SONAME ON)

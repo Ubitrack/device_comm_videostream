@@ -29,6 +29,8 @@
  * @author Ulrich Eck
  */
 
+//#ifdef HAVE_NVENC
+
 // std
 #include <string>
 
@@ -428,3 +430,4 @@ namespace Ubitrack { namespace Vision {
         }
 
     } } // namespace Ubitrack::Vision
+//#endif // HAVE_NVENC
