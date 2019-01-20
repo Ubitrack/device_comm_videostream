@@ -177,11 +177,33 @@ namespace Ubitrack { namespace Vision {
                 // Wait until there is one source
                 uint32_t no_sources = 0;
                 const NDIlib_source_t* p_sources = NULL;
-                while ((m_running) && (!no_sources))
+
+                bool found_source = false;
+                uint32_t selected_source_idx = 0;
+
+                while ((m_running) && (!found_source))
                 {	// Wait until the sources on the nwtork have changed
                     LOG4CPP_INFO(logger, "Looking for NDI sources for 500ms ...");
                     NDIlib_find_wait_for_sources(pNDI_find, 500/* Half a second */);
                     p_sources = NDIlib_find_get_current_sources(pNDI_find, &no_sources);
+                    LOG4CPP_INFO(logger, "Looking for NDI no_sources=" << no_sources);
+
+                    // does our request match a source ??
+                    for (uint32_t i = 0; i < no_sources; i++) {
+                        LOG4CPP_INFO(logger, "Found NDI Source: " << p_sources[i].p_ndi_name << " at IP: " << p_sources[i].p_ip_address);
+                        if (m_sink_short_name.compare(p_sources[i].p_ndi_name) == 0) {
+                            selected_source_idx = i;
+                            found_source = true;
+                            break;
+                        }
+                    }
+
+                }
+
+                if (!found_source) {
+                    LOG4CPP_ERROR(logger, "Could not find source: " << m_sink_short_name << " amongst available streams.");
+                    m_running = false;
+                    return;
                 }
 
                 // We now have at least one source, so we create a receiver to look at it.
@@ -192,25 +214,9 @@ namespace Ubitrack { namespace Vision {
                     return;
                 }
 
-                bool found_source = false;
-                uint32_t selected_source_idx = 0;
-                for (uint32_t i = 0; i < no_sources; i++) {
-                    LOG4CPP_INFO(logger, "Found NDI Source: " << p_sources[i].p_ndi_name << " at IP: " << p_sources[i].p_ip_address);
-                    if (m_sink_short_name.compare(p_sources[i].p_ndi_name) == 0) {
-                        selected_source_idx = i;
-                        found_source = true;
-                        break;
-                    }
-                }
-
-                if (!found_source) {
-                    LOG4CPP_ERROR(logger, "Could not find source: " << m_sink_short_name << " amongst available streams.");
-                    m_running = false;
-                    return;
-                }
 
                 // Connect to our sources
-                NDIlib_recv_connect(pNDI_recv, p_sources + 0);
+                NDIlib_recv_connect(pNDI_recv, p_sources + selected_source_idx);
 
                 // Destroy the NDI finder. We needed to have access to the pointers to p_sources[0]
                 NDIlib_find_destroy(pNDI_find);
