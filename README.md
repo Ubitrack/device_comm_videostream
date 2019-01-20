@@ -1,10 +1,18 @@
-device_comm_zmq
+device_comm_videostream
 ==============
-This is the Ubitrack device_comm_zmq submodule.
+This is the Ubitrack device_comm_videostream submodule.
 
 Description
 ----------
-The device_comm_zmq contains components for network communication via zeromq.
+The device_comm_videostream contains components for video streaming over networks.
+
+- NVEncSources/Sinks:
+
+  Hardware accelerated h264 streaming using Nvidia NVEnc via NvPipe. Uses a simple (not yet stable) UDP transport protocol.
+
+- NDISources/Sinks:
+
+  CPU-based video compression/streaming using Newtek NDI SDK. Relatively efficient streaming for color-video streams.
 
 ## Add Remotes
 
@@ -13,12 +21,22 @@ The device_comm_zmq contains components for network communication via zeromq.
 
 ## For Users: Use this package
 
+There are a number of options:
+
+ * with_nvenc: Enables NVidia NVEnc Videostreaming using hw-acceleration and a simple UDP transport (unstable). Pulls NvPipe dependency and CUDA
+ * with_ndi: Enables Newtek NDI Videostreaming. Requires a location of the sdk (config variable: ndisdk_root)
+ * ndisdk_root: root of Newtek NDI SDK root directory
 ### Project setup
 
 If you handle multiple dependencies in your project is better to add a *conanfile.txt*
 
     [requires]
-    ubitrack_device_comm_zmq/1.3.0@ubitrack/stable
+    ubitrack_device_comm_videostream/1.3.0@ubitrack/stable
+
+    [options]
+    ubitrack_device_comm_videostream:with_nvenc=True
+    ubitrack_device_comm_videostream:with_ndi=True
+    ubitrack_device_comm_videostream:ndisdk_root=~/path/to/ndisdk
 
     [generators]
     cmake
@@ -42,4 +60,4 @@ The following command both runs all the steps of the conan file, and publishes t
 
 ## Upload
 
-    $ conan upload -r ubitrack ubitrack_device_comm_zmq/1.3.0@ubitrack/stable
+    $ conan upload -r ubitrack ubitrack_device_comm_videostream/1.3.0@ubitrack/stable
