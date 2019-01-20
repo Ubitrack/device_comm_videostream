@@ -28,6 +28,28 @@
     </Pattern>
 
 
+    <Pattern name="VideostreamNDISource" displayName="Network Source NDI decoded (Image)">
+        <Description><h:p>This pattern receives a Image via UDP from a <h:code>NetworkSinkEvent</h:code></h:p></Description>
+
+        <Output>
+            <Node name="A" displayName="A"/>
+            <Node name="B" displayName="B"/>
+            <Edge name="Output" source="A" destination="B" displayName="Output">
+                <Description><h:p>The Image pushed via network</h:p></Description>
+                <Attribute name="type" value="Image" xsi:type="EnumAttributeReferenceType"/>
+                <Attribute name="mode" value="push" xsi:type="EnumAttributeReferenceType"/>
+            </Edge>
+        </Output>
+
+        <DataflowConfiguration>
+            <UbitrackLib class="VideostreamNDISource"/>
+            <Attribute name="sinkShortName" displayName="Short Name" default="Videosink" xsi:type="StringAttributeDeclarationType">
+            </Attribute>
+            <Attribute name="sinkSession" displayName="Session" default="default" xsi:type="StringAttributeDeclarationType">
+            </Attribute>
+        </DataflowConfiguration>
+    </Pattern>
+
     <!-- Attribute declarations -->
 
     <GlobalNodeAttributeDeclarations>

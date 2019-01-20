@@ -24,7 +24,7 @@
 /**
  * @ingroup driver_components
  * @file
- * VideostreamNvencSink component.
+ * VideostreamNDISink component.
  *
  * @author Ulrich Eck
  */
@@ -56,6 +56,8 @@
 
 #include <Processing.NDI.Lib.h>
 
+#include "VideostreamNDIContext.h"
+
 namespace Ubitrack { namespace Vision {
 
         static log4cpp::Category& logger( log4cpp::Category::getInstance( "Drivers.VideostreamNDISink" ) );
@@ -84,7 +86,6 @@ namespace Ubitrack { namespace Vision {
  * - Ubitrack::Measurement::ImageMeasurement: NetworkVideostreamNDISink
  */
 
-        static bool g_ndilib_initialized = false;
 
         class VideostreamNDISinkComponent
                 : public Dataflow::Component
@@ -157,7 +158,6 @@ namespace Ubitrack { namespace Vision {
 
             void initialize_ndi()
             {
-                // @todo we should try to get rid of this lock for the default case, that is - everything initialized !!!
                 static boost::mutex singletonMutex;
                 boost::mutex::scoped_lock l(singletonMutex);
 
@@ -267,7 +267,7 @@ namespace Ubitrack { namespace Vision {
 
                         // Cycle over the line
                         for (int x = 0; x < m_ndi_videoframe->xres; x++, p_image += 4, line_idx++)
-                        {	// Slight transparent blue
+                        {
                             cv::Vec4b pixel = img.at<cv::Vec4b>(y, x);
                             p_image[0] = pixel.val[0];
                             p_image[1] = pixel.val[1];
