@@ -146,8 +146,8 @@ namespace Ubitrack { namespace Vision {
 
             void initialize_ndi()
             {
-                static boost::mutex singletonMutex;
-                boost::mutex::scoped_lock l(singletonMutex);
+//                static boost::mutex singletonMutex;
+//                boost::mutex::scoped_lock l(singletonMutex);
 
                 if (!g_ndilib_initialized) {
                     if (!NDIlib_initialize())
@@ -255,7 +255,9 @@ namespace Ubitrack { namespace Vision {
 
                 Vision::Image::ImageFormatProperties props;
 
-                size_t elementSize = 32;
+                bool needs_convert = false;
+                int cv_convert_code = 0;
+                int cv_mat_code = CV_8UC4;
                 switch (frame.FourCC) {
                     case NDIlib_FourCC_type_BGRA:
                         props.imageFormat = Vision::Image::BGRA;
@@ -263,7 +265,6 @@ namespace Ubitrack { namespace Vision {
                         props.channels = 4;
                         props.matType = CV_8UC4;
                         props.depth = CV_8U;
-                        elementSize = 4;
                         break;
                     case NDIlib_FourCC_type_RGBA:
                         props.imageFormat = Vision::Image::RGBA;
@@ -271,33 +272,56 @@ namespace Ubitrack { namespace Vision {
                         props.channels = 4;
                         props.matType = CV_8UC4;
                         props.depth = CV_8U;
-                        elementSize = 4;
                         break;
+
+                    case NDIlib_FourCC_type_UYVY:
+                        props.imageFormat = Vision::Image::BGRA;
+                        props.bitsPerPixel = 32;
+                        props.channels = 4;
+                        props.matType = CV_8UC4;
+                        props.depth = CV_8U;
+
+                        cv_convert_code = CV_YUV2BGRA_UYVY;
+                        cv_mat_code = CV_8UC2;
+                        needs_convert = true;
+                        break;
+
+                    case NDIlib_FourCC_type_YV12:
+                        LOG4CPP_ERROR(logger, "Unsupported NDI Format: YV12");
+                        return;
+                    case NDIlib_FourCC_type_NV12:
+                        LOG4CPP_ERROR(logger, "Unsupported NDI Format: NV12");
+                        return;
+                    case NDIlib_FourCC_type_I420:
+                        LOG4CPP_ERROR(logger, "Unsupported NDI Format: I420");
+                        return;
+                    case NDIlib_FourCC_type_BGRX:
+                        LOG4CPP_ERROR(logger, "Unsupported NDI Format: BGRX");
+                        return;
+                    case NDIlib_FourCC_type_RGBX:
+                        LOG4CPP_ERROR(logger, "Unsupported NDI Format: RGBX");
+                        return;
+                    case NDIlib_FourCC_type_UYVA:
+                        LOG4CPP_ERROR(logger, "Unsupported NDI Format: UYVA");
+                        return;
+
                     default:
                         LOG4CPP_ERROR(logger, "Unknown format: " << frame.FourCC);
                         return;
                 }
 
-                // create an empty image
-                Image::Ptr currentImage(new Image(frame.xres, frame.yres, props));
-                cv::Mat img = currentImage->Mat();
+                // create a new buffer for the decoded/copied frame)
+                Image::Ptr currentImage;
 
-                // Copy the frame. It is likely that you would do something much smarter than this.
-                for (int y = 0; y < frame.yres; y++)
-                {	// The frame data
-                    uint8_t* p_image = (uint8_t*)frame.p_data + frame.line_stride_in_bytes*y;
+                // wrap the frame as cv::Mat (no copying, maybe need to care about strides ..)
+                cv::Mat wrapped_image(frame.yres, frame.xres, cv_mat_code, frame.p_data);
 
-                    int line_idx = y;
-
-                    // Cycle over the line
-                    for (int x = 0; x < frame.xres; x++, p_image += 4, line_idx++)
-                    {
-                        cv::Vec4b pixel = img.at<cv::Vec4b>(y, x);
-                        pixel.val[0] = p_image[0];
-                        pixel.val[1] = p_image[1];
-                        pixel.val[2] = p_image[2];
-                        pixel.val[3] = p_image[3];
-                    }
+                if (needs_convert) {
+                    currentImage.reset(new Image(frame.xres, frame.yres, props));
+                    cv::cvtColor(wrapped_image, currentImage->Mat(), cv_convert_code);
+                } else {
+                    cv::Mat img = wrapped_image.clone();
+                    currentImage.reset(new Image(img, props));
                 }
 
                 m_outPort.send(Measurement::ImageMeasurement(sendtime, currentImage));

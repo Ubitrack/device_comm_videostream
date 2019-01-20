@@ -233,7 +233,13 @@ namespace Ubitrack { namespace Vision {
                     LOG4CPP_DEBUG(logger, "No current connections, so no rendering needed.");
                 }
                 else
-                {	// Have we received any meta-data
+                {
+                    // try locking the ndi-lib interaction
+//                    static boost::mutex encodeMutex;
+//                    boost::mutex::scoped_lock l(encodeMutex);
+
+
+                    // Have we received any meta-data
                     NDIlib_metadata_frame_t metadata_desc;
                     if (NDIlib_send_capture(m_ndi_send, &metadata_desc, 0))
                     {	// For example, this might be a connection meta-data string that might include information
