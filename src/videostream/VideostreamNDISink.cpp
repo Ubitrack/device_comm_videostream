@@ -29,7 +29,7 @@
  * @author Ulrich Eck
  */
 
-//#ifdef HAVE_NDI
+#ifdef HAVE_NDI
 
 // std
 #include <csignal>
@@ -297,4 +297,4 @@ namespace Ubitrack { namespace Vision {
         }
 
     } } // namespace Ubitrack::Drivers
-//#endif // HAVE_NDI
+#endif // HAVE_NDI

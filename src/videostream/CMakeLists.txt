@@ -22,11 +22,14 @@ foreach(fpath ${UBITRACK_SRCS})
 
   if (WITH_NDI)
     target_link_libraries(${UBITRACK_LIBRARY_NAME}
-            ${NDI_LIBRARIES}
+            CONAN_PKG::newtekndi
             )
-    target_include_directories(${UBITRACK_LIBRARY_NAME}
-            PRIVATE ${NDI_INCLUDE_DIR}
-            )
+#    target_link_libraries(${UBITRACK_LIBRARY_NAME}
+#            ${NDI_LIBRARIES}
+#            )
+#    target_include_directories(${UBITRACK_LIBRARY_NAME}
+#            PRIVATE ${NDI_INCLUDE_DIR}
+#            )
   endif(WITH_NDI)
 
   # do not create symlinks to versioned names of component libraries

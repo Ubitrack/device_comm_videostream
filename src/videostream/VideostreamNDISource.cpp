@@ -29,7 +29,7 @@
  * @author Ulrich Eck
  */
 
-//#ifdef HAVE_NDI
+#ifdef HAVE_NDI
 
 // std
 #include <string>
@@ -342,4 +342,4 @@ namespace Ubitrack { namespace Vision {
         }
 
     } } // namespace Ubitrack::Vision
-//#endif // HAVE_NDI
+#endif // HAVE_NDI

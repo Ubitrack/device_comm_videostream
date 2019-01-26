@@ -29,7 +29,7 @@
  * @author Ulrich Eck
  */
 
-//#ifdef HAVE_NVENC
+#ifdef HAVE_NVENC
 
 // std
 #include <string>
@@ -396,4 +396,4 @@ namespace Ubitrack { namespace Vision {
         }
 
     } } // namespace Ubitrack::Drivers
-//#endif // HAVE_NVENC
+#endif // HAVE_NVENC

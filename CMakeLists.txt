@@ -10,14 +10,18 @@ conan_basic_setup(TARGETS)
 include(GNUInstallDirs)
 include(cmake/UbitrackConfig)
 
+OPTION(WITH_NVENC "Enable NVenc encoded UDP Streaming" OFF)
+OPTION(WITH_NDI "Enable NDI videostreaming" OFF)
+
 if(WITH_NVENC)
   message(STATUS "NVEnc is enabled.")
   set(UBITRACK_COMPILE_DEFINITIONS ${UBITRACK_COMPILE_DEFINITIONS} "HAVE_NVENC")
 endif(WITH_NVENC)
 
 if(WITH_NDI)
-  find_package(NDI REQUIRED)
-  message(STATUS "Found NDI: ${NDI_INCLUDE_DIR}  ${NDI_LIBRARIES}")
+  #find_package(NDI REQUIRED)
+  message(STATUS "NDI is enabled.")
+  #message(STATUS "Found NDI: ${NDI_INCLUDE_DIR}  ${NDI_LIBRARIES}")
   set(UBITRACK_COMPILE_DEFINITIONS ${UBITRACK_COMPILE_DEFINITIONS} "HAVE_NDI")
 
 endif(WITH_NDI)

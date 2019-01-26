@@ -57,7 +57,7 @@
 
 #define FRAME_HEADER_ID 0xAA55U
 #define PACKET_HEADER_ID 0x55AAU
-#define UDP_PACKET_SIZE 4096 //udp pack size; note that OSX limits < 8100 bytes
+#define UDP_PACKET_SIZE 1400 // was 4096 //udp pack size; note that OSX limits < 8100 bytes
 
 
 class VideostreamNvencFrameHeader
