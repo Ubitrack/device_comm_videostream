@@ -18,6 +18,7 @@ The device_comm_videostream contains components for video streaming over network
 
     $ conan remote add camposs "https://conan.campar.in.tum.de/api/conan/conan-camposs"
     $ conan remote add ubitrack "https://conan.campar.in.tum.de/api/conan/conan-ubitrack"
+    $ conan remote add vendor "https://conan.campar.in.tum.de/api/conan/conan-vendor"
 
 ## For Users: Use this package
 
