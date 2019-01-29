@@ -34,6 +34,12 @@ class UbitrackCommVideostreamConan(ConanFile):
     # all sources are deployed with the package
     exports_sources = "cmake/*", "doc/*", "src/*", "CMakeLists.txt"
 
+    def configure(self):
+        # no CUDA/NVenc on Macos 
+        if self.settings.os == "Macos":
+            self.options.with_nvenc = False
+
+
     def requirements(self):
         if not (self.options.with_nvenc or self.options.with_ndi):
             raise ValueError("No Videostream supplier activated.")
