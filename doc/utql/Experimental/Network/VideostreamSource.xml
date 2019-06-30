@@ -6,8 +6,8 @@
                       xmlns:h="http://www.w3.org/1999/xhtml"
                       xsi:schemaLocation='http://ar.in.tum.de/ubitrack/utql ../../schema/utql_templates.xsd'>
 
-    <Pattern name="VideostreamNvencSource" displayName="Network Source NVENC decoded (Image)">
-        <Description><h:p>This pattern receives a Image via UDP from a <h:code>NetworkSinkEvent</h:code></h:p></Description>
+    <Pattern name="VideostreamNvencRtspSource" displayName="RTSP Network Source NVENC decoded (Image)">
+        <Description><h:p>This pattern receives a Image via rtsp from a <h:code>NetworkSinkEvent</h:code></h:p></Description>
 
         <Output>
             <Node name="A" displayName="A"/>
@@ -20,9 +20,9 @@
         </Output>
 
         <DataflowConfiguration>
-            <UbitrackLib class="VideostreamNvencSource"/>
-            <Attribute name="networkPort" displayName="Port" default="21844" xsi:type="IntAttributeDeclarationType">
-                <Description><h:p>Port of receiver socket. Defaults to 0x5554 (21844)</h:p></Description>
+            <UbitrackLib class="VideostreamNvencRtspSource"/>
+            <Attribute name="rtspAddress" displayName="rtspAddress" default="rtsp://141.39.159.84:55555/live" xsi:type="StringAttributeDeclarationType">
+                <Description><h:p>Server address. Defaults to: rtsp://141.39.159.84:55555/live</h:p></Description>
             </Attribute>
         </DataflowConfiguration>
     </Pattern>

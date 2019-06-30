@@ -11,12 +11,19 @@ include(GNUInstallDirs)
 include(cmake/UbitrackConfig)
 
 OPTION(WITH_NVENC "Enable NVenc encoded UDP Streaming" OFF)
+OPTION(WITH_NVENC_RTSP "Enable NVenc encoded RTSP Streaming" OFF)
 OPTION(WITH_NDI "Enable NDI videostreaming" OFF)
 
 if(WITH_NVENC)
   message(STATUS "NVEnc is enabled.")
   set(UBITRACK_COMPILE_DEFINITIONS ${UBITRACK_COMPILE_DEFINITIONS} "HAVE_NVENC")
 endif(WITH_NVENC)
+
+if(WITH_NVENC_RTSP)
+  message(STATUS "NVEnc RTSP is enabled.")
+  set(UBITRACK_COMPILE_DEFINITIONS ${UBITRACK_COMPILE_DEFINITIONS} "HAVE_NVENC_RTSP")
+  find_package(CUDA REQUIRED)
+endif(WITH_NVENC_RTSP)
 
 if(WITH_NDI)
   #find_package(NDI REQUIRED)

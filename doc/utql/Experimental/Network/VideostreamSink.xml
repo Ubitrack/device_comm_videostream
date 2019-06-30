@@ -7,8 +7,8 @@
                       xsi:schemaLocation='http://ar.in.tum.de/ubitrack/utql ../../schema/utql_templates.xsd'>
 
 
-    <Pattern name="VideostreamNvencSink" displayName="Network Sink NVENC encoded (Image)">
-        <Description><h:p>This pattern transmits a Image via UDP to a NetworkSoureImage.</h:p></Description>
+    <Pattern name="VideostreamNvencRtspSink" displayName="RTSP Network Sink NVENC encoded (Image)">
+        <Description><h:p>This pattern transmits a Image via rtsp to a NetworkSoureImage.</h:p></Description>
 
         <Input>
             <Node name="A" displayName="A"/>
@@ -21,28 +21,25 @@
         </Input>
 
         <DataflowConfiguration>
-            <UbitrackLib class="VideostreamNvencSink"/>
-            <Attribute name="networkDestination" displayName="Network Destination" default="127.0.0.1" xsi:type="StringAttributeDeclarationType">
-            </Attribute>
-            <Attribute name="networkPort" displayName="Network Port" default="21844" xsi:type="IntAttributeDeclarationType">
-                <Description><h:p>Port of receiver socket. Defaults to 0x5554 (21844)</h:p></Description>
+            <UbitrackLib class="VideostreamNvencRtspSink"/>
+            <Attribute name="networkPort" displayName="Network Port" default="55555" xsi:type="IntAttributeDeclarationType">
+                <Description><h:p>Port of receiver socket. Defaults to 55555</h:p></Description>
             </Attribute>
 
             <Attribute name="nvVideoCodec" xsi:type="EnumAttributeReferenceType"/>
             <Attribute name="nvVideoCompression" xsi:type="EnumAttributeReferenceType"/>
             <Attribute name="nvVideoFormat" xsi:type="EnumAttributeReferenceType"/>
 
-            <Attribute name="frameRate" displayName="Frame Rate" default="30" xsi:type="IntAttributeDeclarationType">
+            <Attribute name="frameRate" displayName="Frame Rate" default="90" xsi:type="IntAttributeDeclarationType">
                 <Description><h:p>Expected Framerate (FPS) of the stream.</h:p></Description>
             </Attribute>
 
-            <Attribute name="bitRate" displayName="Bit Rate" default="10" xsi:type="IntAttributeDeclarationType">
+            <Attribute name="bitRate" displayName="Bit Rate" default="32" xsi:type="IntAttributeDeclarationType">
                 <Description><h:p>Expected Bitrate in Mbps of the stream.</h:p></Description>
             </Attribute>
 
         </DataflowConfiguration>
     </Pattern>
-
 
     <Pattern name="VideostreamNDISink" displayName="Network Sink NDI (Image)">
         <Description><h:p>This pattern transmits using Newtek NDI to a NetworkSoureImage.</h:p></Description>
@@ -103,9 +100,9 @@
             <EnumValue name="LOSSY" displayName="LOSSY"/>
         </Attribute>
 
-        <Attribute name="nvVideoFormat" displayName="Video Format" default="BGRA32" xsi:type="EnumAttributeDeclarationType">
+        <Attribute name="nvVideoFormat" displayName="Video Format" default="RGB32" xsi:type="EnumAttributeDeclarationType">
             <Description><p xmlns="http://www.w3.org/1999/xhtml">Select the video (pixel) format.</p></Description>
-            <EnumValue name="BGRA32" displayName="BGRA32"/>
+            <EnumValue name="RGB32" displayName="RGBA32"/>
             <EnumValue name="UINT8" displayName="UINT8"/>
             <EnumValue name="UINT16" displayName="UINT16"/>
             <EnumValue name="UINT32" displayName="UINT32"/>

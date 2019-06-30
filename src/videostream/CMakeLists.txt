@@ -20,6 +20,15 @@ foreach(fpath ${UBITRACK_SRCS})
       )
   endif(WITH_NVENC)
 
+  if (WITH_NVENC_RTSP)
+    target_link_libraries(${UBITRACK_LIBRARY_NAME}
+      CONAN_PKG::nvenc_rtsp
+      )
+   target_include_directories(${UBITRACK_LIBRARY_NAME}
+           PRIVATE ${CUDA_INCLUDE_DIRS}
+           )
+  endif(WITH_NVENC_RTSP)
+
   if (WITH_NDI)
     target_link_libraries(${UBITRACK_LIBRARY_NAME}
             CONAN_PKG::newtekndi

@@ -14,6 +14,7 @@ class UbitrackCommVideostreamConan(ConanFile):
     options = {
         "with_nvenc": [True, False],
         "with_ndi": [True, False],
+        "with_nvenc_rtsp": [True, False],
     }
     generators = "cmake"
 
@@ -27,8 +28,9 @@ class UbitrackCommVideostreamConan(ConanFile):
         "ubitrack_core:shared=True",
         "ubitrack_vision:shared=True",
         "ubitrack_dataflow:shared=True",
-        "with_nvenc=True",
-        "with_ndi=True",
+        "with_nvenc=False",
+        "with_nvenc_rtsp=False",
+        "with_ndi=False",
         )
 
     # all sources are deployed with the package
@@ -38,13 +40,17 @@ class UbitrackCommVideostreamConan(ConanFile):
         # no CUDA/NVenc on Macos 
         if self.settings.os == "Macos":
             self.options.with_nvenc = False
-
+            self.options.with_nvenc_rtsp = False
 
     def requirements(self):
-        if not (self.options.with_nvenc or self.options.with_ndi):
+        if not (self.options.with_nvenc or self.options.with_nvenc_rtsp or self.options.with_ndi):
             raise ValueError("No Videostream supplier activated.")
         if self.options.with_nvenc:
             self.requires("nvpipe/[>=0.1]@camposs/testing")
+        if self.options.with_nvenc_rtsp:
+            self.requires("nvenc_rtsp/0.1@artekmed/testing")
+            self.requires("cuda_dev_config/[>=1.0]@camposs/stable")
+
         if self.options.with_ndi:
             self.requires("newtekndi/[>=3.0]@vendor/stable")
 
@@ -57,6 +63,8 @@ class UbitrackCommVideostreamConan(ConanFile):
         cmake = CMake(self)
         if self.options.with_nvenc:
             cmake.definitions["WITH_NVENC"] = "ON"
+        if self.options.with_nvenc_rtsp:
+            cmake.definitions["WITH_NVENC_RTSP"] = "ON"
         if self.options.with_ndi:
             cmake.definitions["WITH_NDI"] = "ON"
         cmake.configure()
