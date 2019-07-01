@@ -21,8 +21,8 @@
 
         <DataflowConfiguration>
             <UbitrackLib class="VideostreamNvencRtspSource"/>
-            <Attribute name="rtspAddress" displayName="rtspAddress" default="rtsp://141.39.159.84:55555/live" xsi:type="StringAttributeDeclarationType">
-                <Description><h:p>Server address. Defaults to: rtsp://141.39.159.84:55555/live</h:p></Description>
+            <Attribute name="rtspAddress" displayName="rtspAddress" default="rtsp://127.0.0.1:55555/live" xsi:type="StringAttributeDeclarationType">
+                <Description><h:p>Server address. Defaults to: rtsp://127.0.0.1:55555/live</h:p></Description>
             </Attribute>
         </DataflowConfiguration>
     </Pattern>

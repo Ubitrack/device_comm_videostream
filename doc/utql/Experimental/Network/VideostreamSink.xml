@@ -25,6 +25,7 @@
             <Attribute name="networkPort" displayName="Network Port" default="55555" xsi:type="IntAttributeDeclarationType">
                 <Description><h:p>Port of receiver socket. Defaults to 55555</h:p></Description>
             </Attribute>
+            <!-- what about stream url postfix ?? -->
 
             <Attribute name="nvVideoCodec" xsi:type="EnumAttributeReferenceType"/>
             <Attribute name="nvVideoCompression" xsi:type="EnumAttributeReferenceType"/>

@@ -47,6 +47,8 @@
 using namespace cv;
 using namespace nvenc_rtsp;
 
+static log4cpp::Category& logger( log4cpp::Category::getInstance( "Drivers.VideostreamNvencRtspSink" ) );
+
 namespace {
     class VideoCodecMap : public std::map<std::string, NvPipe_Codec > {
     public:
@@ -128,6 +130,7 @@ namespace Ubitrack
                 if(m_videoPipe == nullptr)
                 {
    
+                    LOG4CPP_INFO(logger, "Connect to: " << m_rtspAddress);
                     // registers callback when frame is received...
                     m_videoPipe = std::make_shared<ClientPipeRTSP>(m_rtspAddress, m_video_format, m_video_codec,
                          [&](cv::Mat mat, uint64_t timestamp) {
