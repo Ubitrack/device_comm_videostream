@@ -15,7 +15,7 @@ class UbitrackCommVideostreamConan(ConanFile):
         "with_nvenc": [True, False],
         "with_ndi": [True, False],
         "with_nvenc_rtsp": [True, False],
-        "workspaceBuild" : [True,False],
+        "workspaceBuild" : [True, False],
     }
     generators = "cmake"
 
@@ -26,7 +26,7 @@ class UbitrackCommVideostreamConan(ConanFile):
         "with_nvenc":False,
         "with_nvenc_rtsp":True,
         "with_ndi":False,
-        "workspaceBuild" : True,
+        "workspaceBuild" : False,
         }
 
     # all sources are deployed with the package
