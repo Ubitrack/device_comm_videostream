@@ -15,23 +15,19 @@ class UbitrackCommVideostreamConan(ConanFile):
         "with_nvenc": [True, False],
         "with_ndi": [True, False],
         "with_nvenc_rtsp": [True, False],
+        "workspaceBuild" : [True,False],
     }
     generators = "cmake"
 
-    requires = (
-        "ubitrack_core/%s@ubitrack/stable" % version,
-        "ubitrack_vision/%s@ubitrack/stable" % version,
-        "ubitrack_dataflow/%s@ubitrack/stable" % version,
-       )
-
-    default_options = (
-        "ubitrack_core:shared=True",
-        "ubitrack_vision:shared=True",
-        "ubitrack_dataflow:shared=True",
-        "with_nvenc=False",
-        "with_nvenc_rtsp=True",
-        "with_ndi=False",
-        )
+    default_options = {
+        "ubitrack_core:shared": True,
+        "ubitrack_vision:shared":True,
+        "ubitrack_dataflow:shared":True,
+        "with_nvenc":False,
+        "with_nvenc_rtsp":True,
+        "with_ndi":False,
+        "workspaceBuild" : True,
+        }
 
     # all sources are deployed with the package
     exports_sources = "cmake/*", "doc/*", "src/*", "CMakeLists.txt"
@@ -43,6 +39,15 @@ class UbitrackCommVideostreamConan(ConanFile):
             self.options.with_nvenc_rtsp = False
 
     def requirements(self):
+
+	userChannel = "ubitrack/stable"
+        if self.options.workspaceBuild:
+            userChannel = "user/testing"
+
+        self.requires("ubitrack_core/%s@%s" % (self.version, userChannel))
+        self.requires("ubitrack_vision/%s@%s" % (self.version, userChannel))
+        self.requires("ubitrack_dataflow/%s@%s" % (self.version, userChannel))
+
         # if not (self.options.with_nvenc or self.options.with_nvenc_rtsp or self.options.with_ndi):
         #     raise ValueError("No Videostream supplier activated.")
         if self.options.with_nvenc:
