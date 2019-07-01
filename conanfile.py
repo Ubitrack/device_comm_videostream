@@ -40,7 +40,7 @@ class UbitrackCommVideostreamConan(ConanFile):
 
     def requirements(self):
 
-	userChannel = "ubitrack/stable"
+        userChannel = "ubitrack/stable"
         if self.options.workspaceBuild:
             userChannel = "user/testing"
 
