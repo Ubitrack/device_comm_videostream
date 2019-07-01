@@ -90,6 +90,7 @@ namespace Ubitrack
             std::shared_ptr<ServerPipeRTSP> m_videoPipe = nullptr;
 
             int m_dstPort;
+            std::string m_ipAddress;
 
             // nvenc video codec
             NvPipe_Codec m_video_codec;
@@ -111,6 +112,7 @@ namespace Ubitrack
                 : Dataflow::Component( name ),
                   m_inPort( "Input", *this, boost::bind( &NVencRtspSinkComponent::eventIn, this, _1 ) ),
                   m_dstPort( 55555 ),
+                  m_ipAddress( "127.0.0.1" ),
                   m_video_codec(NVPIPE_H264),
                   m_video_compression(NVPIPE_LOSSLESS),
                   m_video_format(NVPIPE_RGBA32),
@@ -119,6 +121,7 @@ namespace Ubitrack
             {
                 // check for configurations and reset values if necessary
                 pConfig->m_DataflowAttributes.getAttributeData( "networkPort", m_dstPort );
+                m_ipAddress = pConfig->m_DataflowAttributes.getAttributeString("ipAddress");
 
                 if (pConfig->m_DataflowAttributes.hasAttribute("nvVideoCodec")) {
                     std::string sVideoCodec = pConfig->m_DataflowAttributes.getAttributeString("nvVideoCodec");
@@ -144,7 +147,7 @@ namespace Ubitrack
                 pConfig->m_DataflowAttributes.getAttributeData( "frameRate", m_framerate);
                 pConfig->m_DataflowAttributes.getAttributeData( "bitRate", m_bitrate );
 
-                m_videoPipe = std::make_shared<ServerPipeRTSP>(m_dstPort, m_video_format, m_video_compression, m_video_codec, m_bitrate, m_framerate);
+                m_videoPipe = std::make_shared<ServerPipeRTSP>(m_ipAddress, m_dstPort, m_video_format, m_video_compression, m_video_codec, m_bitrate, m_framerate);
             }
 
             ~NVencRtspSinkComponent()

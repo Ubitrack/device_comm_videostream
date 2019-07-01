@@ -22,8 +22,12 @@
 
         <DataflowConfiguration>
             <UbitrackLib class="VideostreamNvencRtspSink"/>
+
+            <Attribute name="ipAddress" displayName="IP Address" default="127.0.0.1" xsi:type="StringAttributeDeclarationType">
+                <Description><h:p>IP address to bind sender socket. Defaults to 127.0.0.1</h:p></Description>
+            </Attribute>
             <Attribute name="networkPort" displayName="Network Port" default="55555" xsi:type="IntAttributeDeclarationType">
-                <Description><h:p>Port of receiver socket. Defaults to 55555</h:p></Description>
+                <Description><h:p>Port of sender socket. Defaults to 55555</h:p></Description>
             </Attribute>
             <!-- what about stream url postfix ?? -->
 
