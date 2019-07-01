@@ -29,7 +29,7 @@ class UbitrackCommVideostreamConan(ConanFile):
         "ubitrack_vision:shared=True",
         "ubitrack_dataflow:shared=True",
         "with_nvenc=False",
-        "with_nvenc_rtsp=False",
+        "with_nvenc_rtsp=True",
         "with_ndi=False",
         )
 
