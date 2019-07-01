@@ -43,8 +43,8 @@ class UbitrackCommVideostreamConan(ConanFile):
             self.options.with_nvenc_rtsp = False
 
     def requirements(self):
-        if not (self.options.with_nvenc or self.options.with_nvenc_rtsp or self.options.with_ndi):
-            raise ValueError("No Videostream supplier activated.")
+        # if not (self.options.with_nvenc or self.options.with_nvenc_rtsp or self.options.with_ndi):
+        #     raise ValueError("No Videostream supplier activated.")
         if self.options.with_nvenc:
             self.requires("nvpipe/[>=0.1]@camposs/testing")
         if self.options.with_nvenc_rtsp:
@@ -60,6 +60,10 @@ class UbitrackCommVideostreamConan(ConanFile):
         self.copy(pattern="*.so*", dst="lib", src="lib") 
        
     def build(self):
+        if not (self.options.with_nvenc or self.options.with_nvenc_rtsp or self.options.with_ndi):
+            self.output.warn("No videostream driver selected!!!")
+            return
+
         cmake = CMake(self)
         if self.options.with_nvenc:
             cmake.definitions["WITH_NVENC"] = "ON"
