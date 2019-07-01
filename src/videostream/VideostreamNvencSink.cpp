@@ -76,7 +76,7 @@ namespace {
     class VideoFormatMap : public std::map<std::string, NvPipe_Format > {
     public:
         VideoFormatMap() {
-            (*this)["BGRA32"] = NVPIPE_BGRA32;
+            (*this)["RGBA32"] = NVPIPE_RGBA32;
             (*this)["UINT4"] = NVPIPE_UINT4;
             (*this)["UINT8"] = NVPIPE_UINT8;
             (*this)["UINT16"] = NVPIPE_UINT16;
