@@ -48,12 +48,10 @@ class UbitrackCommVideostreamConan(ConanFile):
         self.requires("ubitrack_vision/%s@%s" % (self.version, userChannel))
         self.requires("ubitrack_dataflow/%s@%s" % (self.version, userChannel))
 
-        # if not (self.options.with_nvenc or self.options.with_nvenc_rtsp or self.options.with_ndi):
-        #     raise ValueError("No Videostream supplier activated.")
         if self.options.with_nvenc:
-            self.requires("nvpipe/[>=0.1]@camposs/testing")
+            self.requires("nvpipe/[>=0.2]@camposs/stable")
         if self.options.with_nvenc_rtsp:
-            self.requires("nvenc_rtsp/0.1@artekmed/testing")
+            self.requires("nvenc_rtsp/0.1@artekmed/stable")
             self.requires("cuda_dev_config/[>=1.0]@camposs/stable")
 
         if self.options.with_ndi:
