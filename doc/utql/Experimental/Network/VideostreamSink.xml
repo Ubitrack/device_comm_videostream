@@ -108,8 +108,7 @@
         <Attribute name="nvVideoFormat" displayName="Video Format" default="RGBA32" xsi:type="EnumAttributeDeclarationType">
             <Description><p xmlns="http://www.w3.org/1999/xhtml">Select the video (pixel) format.</p></Description>
             <EnumValue name="RGBA32" displayName="RGBA32"/>
-	    <EnumValue name="BGRA32" displayName="BGRA32"/>
-            <EnumValue name="UINT8" displayName="UINT8"/>
+	        <EnumValue name="UINT8" displayName="UINT8"/>
             <EnumValue name="UINT16" displayName="UINT16"/>
             <EnumValue name="UINT32" displayName="UINT32"/>
         </Attribute>
